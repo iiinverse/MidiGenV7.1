@@ -98,4 +98,5 @@ class CompositionGraph:
             f"{n.name} -> {n.engine.__class__.__name__}.{n.method}"
             for n in self.nodes
         ]
-        
+        if not hasattr(engine, node.method):
+    raise AttributeError(...)
