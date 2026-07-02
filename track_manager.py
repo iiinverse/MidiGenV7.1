@@ -253,3 +253,6 @@ class TrackManager:
         self.tracks.clear()
         self.history.clear()
         
+    def reorder_tracks(self, new_order: List[str]):
+            
+    def set_limit(self, max_tracks=15):
