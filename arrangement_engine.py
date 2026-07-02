@@ -1,234 +1,169 @@
-from __future__ import annotations
-
-from dataclasses import dataclass, field
-from typing import List, Dict, Optional, Tuple
-import copy
+from typing import List, Dict, Optional
 import random
 
 
-# --------------------------------------------------
-# TRACK MODEL
-# --------------------------------------------------
-
-@dataclass(slots=True)
-class Track:
-    """
-    A track contains phrases assigned to a single instrument layer.
-    """
-
-    name: str
-    phrases: List["Phrase"] = field(default_factory=list)
-    metadata: Dict = field(default_factory=dict)
-
-    def clone(self) -> "Track":
-        return copy.deepcopy(self)
-
-    def total_duration(self) -> float:
-        if not self.phrases:
-            return 0.0
-        return max(
-            (p.total_duration() for p in self.phrases),
-            default=0.0
-        )
-
-
-# --------------------------------------------------
-# ARRANGEMENT MODEL
-# --------------------------------------------------
-
-@dataclass(slots=True)
-class Arrangement:
-    """
-    Full song structure composed of multiple tracks.
-    """
-
-    tracks: List[Track] = field(default_factory=list)
-    metadata: Dict = field(default_factory=dict)
-
-    def clone(self) -> "Arrangement":
-        return copy.deepcopy(self)
-
-    def total_duration(self) -> float:
-        return max(
-            (t.total_duration() for t in self.tracks),
-            default=0.0
-        )
-
-
-# --------------------------------------------------
-# ARRANGEMENT ENGINE
-# --------------------------------------------------
-
 class ArrangementEngine:
 
-    def __init__(self):
-        self.history: List[Arrangement] = []
-        self.seed: Optional[int] = None
+    def __init__(self, mood_engine):
+        self.mood_engine = mood_engine
 
-    # -----------------------------
-    # SEED CONTROL
-    # -----------------------------
+    # --------------------------------------------------
+    # MAIN ENTRY
+    # --------------------------------------------------
 
-    def set_seed(self, seed: int):
-        self.seed = seed
-        random.seed(seed)
-
-    # -----------------------------
-    # CORE BUILD
-    # -----------------------------
-
-    def build_single_track(
+    def build_arrangement(
         self,
-        name: str,
-        phrase: "Phrase"
-    ) -> Arrangement:
-        """
-        Wraps a single phrase into a track arrangement.
-        """
+        tracks: List,
+        mood_name: str,
+        intensity: float = 1.0
+    ) -> Dict:
 
-        track = Track(
-            name=name,
-            phrases=[phrase.clone()]
+        mood = self.mood_engine.get(mood_name)
+        profile = self.mood_engine.generation_profile(mood)
+
+        # 1. classify tracks
+        classified = self._classify_tracks(tracks)
+
+        # 2. assign roles based on mood
+        arrangement = self._assign_roles(classified, profile, intensity)
+
+        # 3. density shaping
+        arrangement = self._apply_density(arrangement, profile)
+
+        # 4. final optimization
+        arrangement = self._optimize_layers(arrangement)
+
+        return {
+            "mood": mood_name,
+            "profile": profile,
+            "arrangement": arrangement
+        }
+
+    # --------------------------------------------------
+    # TRACK CLASSIFICATION
+    # --------------------------------------------------
+
+    def _classify_tracks(self, tracks: List) -> Dict[str, List]:
+
+        groups = {
+            "rhythm": [],
+            "low": [],
+            "harmony": [],
+            "lead": [],
+            "fx": []
+        }
+
+        for t in tracks:
+
+            role = t.role.lower()
+
+            if "drum" in role:
+                groups["rhythm"].append(t)
+
+            elif "bass" in role:
+                groups["low"].append(t)
+
+            elif "pad" in role or "string" in role or "piano" in role:
+                groups["harmony"].append(t)
+
+            elif "lead" in role or "melody" in role:
+                groups["lead"].append(t)
+
+            else:
+                groups["fx"].append(t)
+
+        return groups
+
+    # --------------------------------------------------
+    # ROLE ASSIGNMENT
+    # --------------------------------------------------
+
+    def _assign_roles(
+        self,
+        groups: Dict,
+        profile: Dict,
+        intensity: float
+    ) -> Dict:
+
+        result = {}
+
+        # DRUMS always active if present
+        for t in groups["rhythm"]:
+            result[t.name] = {
+                "role": "rhythm",
+                "active": True,
+                "density": profile["rhythmic_activity"] * intensity
+            }
+
+        # BASS = anchor
+        for t in groups["low"]:
+            result[t.name] = {
+                "role": "bass",
+                "active": profile["energy"] > 0.2,
+                "density": profile["energy"] * intensity
+            }
+
+        # HARMONY = mood-driven
+        for t in groups["harmony"]:
+            result[t.name] = {
+                "role": "harmony",
+                "active": profile["harmonic_density"] > 0.3,
+                "density": profile["harmonic_density"] * intensity
+            }
+
+        # LEAD = emotional focus
+        for t in groups["lead"]:
+            result[t.name] = {
+                "role": "lead",
+                "active": profile["melodic_activity"] > 0.25,
+                "density": profile["melodic_activity"] * intensity
+            }
+
+        # FX = conditional
+        for t in groups["fx"]:
+            result[t.name] = {
+                "role": "fx",
+                "active": profile["darkness"] > 0.4,
+                "density": profile["tension"] * 0.5
+            }
+
+        return result
+
+    # --------------------------------------------------
+    # DENSITY CONTROL
+    # --------------------------------------------------
+
+    def _apply_density(self, arrangement: Dict, profile: Dict) -> Dict:
+
+        for name, data in arrangement.items():
+
+            base = data["density"]
+
+            # global mood shaping
+            if profile["energy"] < 0.3:
+                base *= 0.6
+
+            if profile["energy"] > 0.8:
+                base *= 1.3
+
+            data["density"] = min(1.0, max(0.0, base))
+
+        return arrangement
+
+    # --------------------------------------------------
+    # FINAL OPTIMIZATION
+    # --------------------------------------------------
+
+    def _optimize_layers(self, arrangement: Dict) -> Dict:
+
+        active_count = sum(
+            1 for v in arrangement.values() if v["active"]
         )
 
-        arrangement = Arrangement(tracks=[track])
+        # prevent overcrowding
+        if active_count > 10:
+            for k, v in arrangement.items():
+                if v["role"] == "fx":
+                    v["active"] = False
 
-        self.history.append(arrangement.clone())
         return arrangement
-
-    # -----------------------------
-    # MULTI TRACK LAYERING
-    # -----------------------------
-
-    def layer_tracks(
-        self,
-        tracks: List[Track]
-    ) -> Arrangement:
-        """
-        Combines multiple tracks into full arrangement.
-        """
-
-        arrangement = Arrangement(
-            tracks=[t.clone() for t in tracks]
-        )
-
-        self.history.append(arrangement.clone())
-        return arrangement
-
-    # -----------------------------
-    # SONG STRUCTURE BUILDER
-    # -----------------------------
-
-    def build_structure(
-        self,
-        base_phrase: "Phrase",
-        structure: List[Tuple[str, int]]
-    ) -> Arrangement:
-        """
-        Builds song form like:
-        [
-            ("intro", 1),
-            ("drop", 2),
-            ("break", 1)
-        ]
-        """
-
-        tracks: List[Track] = []
-
-        for section_name, repeats in structure:
-
-            phrases = []
-
-            for _ in range(repeats):
-                phrases.append(base_phrase.clone())
-
-            track = Track(
-                name=section_name,
-                phrases=phrases
-            )
-
-            tracks.append(track)
-
-        arrangement = Arrangement(tracks=tracks)
-
-        self.history.append(arrangement.clone())
-        return arrangement
-
-    # -----------------------------
-    # TRANSFORMATIONS
-    # -----------------------------
-
-    def transpose_arrangement(
-        self,
-        arrangement: Arrangement,
-        semitones: int
-    ) -> Arrangement:
-        """
-        Transposes all notes in entire arrangement.
-        """
-
-        arr = arrangement.clone()
-
-        for track in arr.tracks:
-            for phrase in track.phrases:
-                for motif in phrase.motifs:
-                    for i in range(len(motif.notes)):
-                        motif.notes[i] += semitones
-
-        return arr
-
-    def reverse_arrangement(
-        self,
-        arrangement: Arrangement
-    ) -> Arrangement:
-        """
-        Reverses temporal order of full arrangement.
-        """
-
-        arr = arrangement.clone()
-
-        for track in arr.tracks:
-            track.phrases.reverse()
-
-            for phrase in track.phrases:
-                phrase.motifs.reverse()
-                phrase.start_times.reverse()
-
-        return arr
-
-    # -----------------------------
-    # EXPORT PREP (FOR NEXT MODULE)
-    # -----------------------------
-
-    def flatten(self, arrangement: Arrangement) -> List[Dict]:
-        """
-        Converts full arrangement into flat event list.
-        (For MIDI exporter later)
-        """
-
-        events = []
-
-        for track in arrangement.tracks:
-            for phrase in track.phrases:
-                for motif, start in zip(phrase.motifs, phrase.start_times):
-                    for note, dur, vel in zip(
-                        motif.notes,
-                        motif.durations,
-                        motif.velocities
-                    ):
-                        events.append({
-                            "track": track.name,
-                            "pitch": note,
-                            "duration": dur,
-                            "velocity": vel,
-                            "start": start,
-                        })
-
-        return events
-
-    # -----------------------------
-    # HISTORY
-    # -----------------------------
-
-    def clear_history(self):
-        self.history.clear()
