@@ -1,8 +1,21 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List
+from typing import Dict, List, Optional
+import random
 import copy
+
+
+# --------------------------------------------------
+# CONSTANTS
+# --------------------------------------------------
+
+MIN_PARAMETER = 0.0
+MAX_PARAMETER = 1.0
+
+DEFAULT_MOOD = "Neutral"
+
+DEFAULT_TRANSITION_BARS = 8
 
 
 # --------------------------------------------------
@@ -38,18 +51,439 @@ class Mood:
 
     preferred_intervals: List[int]
 
+    syncopation: float = 0.50
+
+    chromaticism: float = 0.20
+
+    ornamentation: float = 0.30
+
+    arpeggio_usage: float = 0.40
+
+    counterpoint: float = 0.25
+
+    modulation_probability: float = 0.10
+
+    rhythmic_complexity: float = 0.50
+
+    melodic_complexity: float = 0.50
+
+    harmonic_complexity: float = 0.50
+
+    bass_activity: float = 0.50
+
+    drum_activity: float = 0.50
+
+    guitar_activity: float = 0.50
+
+    keyboard_activity: float = 0.50
+
+    pad_activity: float = 0.40
+
+    string_activity: float = 0.40
+
+    brass_activity: float = 0.30
+
+    choir_activity: float = 0.20
+
+    lead_activity: float = 0.60
+
+    humanize_timing: float = 0.05
+
+    humanize_velocity: float = 0.05
+
+    humanize_length: float = 0.02
+
+    pause_probability: float = 0.10
+
+    accent_probability: float = 0.35
+
+    octave_jump_probability: float = 0.20
+
     metadata: Dict = field(
         default_factory=dict
     )
 
     def clone(self):
 
-        return copy.deepcopy(
-            self
-        )
+        return copy.deepcopy(self)
 
 
 # --------------------------------------------------
+# TRACK MOOD
+# --------------------------------------------------
+
+@dataclass(slots=True)
+class TrackMood:
+
+    role: str
+
+    mood: Mood
+
+    weight: float = 1.0
+
+    override_energy: Optional[float] = None
+
+    override_density: Optional[float] = None
+
+    override_complexity: Optional[float] = None
+
+    override_velocity: Optional[int] = None
+
+    metadata: Dict = field(
+        default_factory=dict
+    )
+
+    def clone(self):
+
+        return copy.deepcopy(self)
+
+
+# --------------------------------------------------
+# SECTION MOOD
+# --------------------------------------------------
+
+@dataclass(slots=True)
+class SectionMood:
+
+    section: str
+
+    mood_name: str
+
+    intensity: float = 1.0
+
+    bars: int = 8
+
+    transition_in: int = 2
+
+    transition_out: int = 2
+
+    metadata: Dict = field(
+        default_factory=dict
+    )
+
+
+# --------------------------------------------------
+# MOOD TRANSITION
+# --------------------------------------------------
+
+@dataclass(slots=True)
+class MoodTransition:
+
+    from_mood: str
+
+    to_mood: str
+
+    bars: int = DEFAULT_TRANSITION_BARS
+
+    curve: str = "linear"
+
+    metadata: Dict = field(
+        default_factory=dict
+    )
+
+
+# --------------------------------------------------
+# MOOD PROFILE
+# --------------------------------------------------
+
+@dataclass(slots=True)
+class MoodProfile:
+
+    main_mood: str = DEFAULT_MOOD
+
+    secondary_mood: Optional[str] = None
+
+    intensity: float = 1.0
+
+    variation: float = 0.20
+
+    evolution: float = 0.50
+
+    randomness: float = 0.10
+
+    genre_bias: float = 0.50
+
+    emotional_depth: float = 0.60
+
+    cinematic_factor: float = 0.30
+
+    aggression: float = 0.50
+
+    warmth: float = 0.50
+
+    brightness: float = 0.50
+
+    darkness: float = 0.50
+
+    metadata: Dict = field(
+        default_factory=dict
+    )
+    # --------------------------------------------------
+# MOOD BLENDER
+# --------------------------------------------------
+
+class MoodBlender:
+
+    @staticmethod
+    def blend(
+        first: Mood,
+        second: Mood,
+        ratio: float = 0.5
+    ) -> Mood:
+
+        ratio = max(0.0, min(1.0, ratio))
+        inv = 1.0 - ratio
+
+        def lerp(a, b):
+            return a * inv + b * ratio
+
+        return Mood(
+
+            name=f"{first.name}_{second.name}",
+
+            energy=lerp(first.energy, second.energy),
+
+            valence=lerp(first.valence, second.valence),
+
+            tension=lerp(first.tension, second.tension),
+
+            darkness=lerp(first.darkness, second.darkness),
+
+            rhythmic_activity=lerp(
+                first.rhythmic_activity,
+                second.rhythmic_activity
+            ),
+
+            harmonic_density=lerp(
+                first.harmonic_density,
+                second.harmonic_density
+            ),
+
+            melodic_activity=lerp(
+                first.melodic_activity,
+                second.melodic_activity
+            ),
+
+            dynamic_range=lerp(
+                first.dynamic_range,
+                second.dynamic_range
+            ),
+
+            articulation=second.articulation,
+
+            velocity_bias=int(
+                lerp(
+                    first.velocity_bias,
+                    second.velocity_bias
+                )
+            ),
+
+            preferred_modes=list(
+                dict.fromkeys(
+                    first.preferred_modes +
+                    second.preferred_modes
+                )
+            ),
+
+            preferred_intervals=list(
+                dict.fromkeys(
+                    first.preferred_intervals +
+                    second.preferred_intervals
+                )
+            ),
+
+            syncopation=lerp(
+                first.syncopation,
+                second.syncopation
+            ),
+
+            chromaticism=lerp(
+                first.chromaticism,
+                second.chromaticism
+            ),
+
+            ornamentation=lerp(
+                first.ornamentation,
+                second.ornamentation
+            ),
+
+            arpeggio_usage=lerp(
+                first.arpeggio_usage,
+                second.arpeggio_usage
+            ),
+
+            counterpoint=lerp(
+                first.counterpoint,
+                second.counterpoint
+            ),
+
+            modulation_probability=lerp(
+                first.modulation_probability,
+                second.modulation_probability
+            ),
+
+            rhythmic_complexity=lerp(
+                first.rhythmic_complexity,
+                second.rhythmic_complexity
+            ),
+
+            melodic_complexity=lerp(
+                first.melodic_complexity,
+                second.melodic_complexity
+            ),
+
+            harmonic_complexity=lerp(
+                first.harmonic_complexity,
+                second.harmonic_complexity
+            ),
+
+            bass_activity=lerp(
+                first.bass_activity,
+                second.bass_activity
+            ),
+
+            drum_activity=lerp(
+                first.drum_activity,
+                second.drum_activity
+            ),
+
+            guitar_activity=lerp(
+                first.guitar_activity,
+                second.guitar_activity
+            ),
+
+            keyboard_activity=lerp(
+                first.keyboard_activity,
+                second.keyboard_activity
+            ),
+
+            pad_activity=lerp(
+                first.pad_activity,
+                second.pad_activity
+            ),
+
+            string_activity=lerp(
+                first.string_activity,
+                second.string_activity
+            ),
+
+            brass_activity=lerp(
+                first.brass_activity,
+                second.brass_activity
+            ),
+
+            choir_activity=lerp(
+                first.choir_activity,
+                second.choir_activity
+            ),
+
+            lead_activity=lerp(
+                first.lead_activity,
+                second.lead_activity
+            ),
+
+            humanize_timing=lerp(
+                first.humanize_timing,
+                second.humanize_timing
+            ),
+
+            humanize_velocity=lerp(
+                first.humanize_velocity,
+                second.humanize_velocity
+            ),
+
+            humanize_length=lerp(
+                first.humanize_length,
+                second.humanize_length
+            ),
+
+            pause_probability=lerp(
+                first.pause_probability,
+                second.pause_probability
+            ),
+
+            accent_probability=lerp(
+                first.accent_probability,
+                second.accent_probability
+            ),
+
+            octave_jump_probability=lerp(
+                first.octave_jump_probability,
+                second.octave_jump_probability
+            )
+        )
+
+    @staticmethod
+    def blend_many(
+        moods: List[Mood]
+    ) -> Mood:
+
+        if not moods:
+            raise ValueError("No moods supplied.")
+
+        result = moods[0].clone()
+
+        for mood in moods[1:]:
+
+            result = MoodBlender.blend(
+                result,
+                mood,
+                0.5
+            )
+
+        return result
+
+
+# --------------------------------------------------
+# MOOD TIMELINE
+# --------------------------------------------------
+
+class MoodTimeline:
+
+    def __init__(self):
+
+        self.sections: List[SectionMood] = []
+
+    def add_section(
+        self,
+        section: SectionMood
+    ):
+
+        self.sections.append(section)
+
+    def clear(self):
+
+        self.sections.clear()
+
+    def total_bars(self):
+
+        return sum(
+            s.bars
+            for s in self.sections
+        )
+
+    def section_at_bar(
+        self,
+        bar: int
+    ) -> Optional[SectionMood]:
+
+        cursor = 0
+
+        for section in self.sections:
+
+            cursor += section.bars
+
+            if bar < cursor:
+
+                return section
+
+        return None
+
+    def all_sections(self):
+
+        return list(self.sections)
+        
+        # --------------------------------------------------
 # MOOD ENGINE
 # --------------------------------------------------
 
@@ -57,895 +491,161 @@ class MoodEngine:
 
     def __init__(self):
 
-        self.moods: Dict[str, Mood] = {}
+        self._moods: Dict[str, Mood] = {}
 
-        self._build_defaults()
+        self.timeline = MoodTimeline()
+
+        self.profile = MoodProfile()
+
+        self._build_default_library()
 
     # --------------------------------------------------
-    # DEFAULT MOODS
+    # LIBRARY
     # --------------------------------------------------
 
-    def _build_defaults(self):
-
-        self.add(
-
-            Mood(
-
-                name="Happy",
-
-                energy=0.75,
-
-                valence=0.95,
-
-                tension=0.20,
-
-                darkness=0.05,
-
-                rhythmic_activity=0.75,
-
-                harmonic_density=0.55,
-
-                melodic_activity=0.82,
-
-                dynamic_range=0.72,
-
-                articulation="legato",
-
-                velocity_bias=5,
-
-                preferred_modes=[
-
-                    "Ionian",
-
-                    "Lydian",
-
-                    "Mixolydian"
-
-                ],
-
-                preferred_intervals=[
-
-                    3,
-                    4,
-                    5,
-                    7
-
-                ]
-
-            )
-
-        )
-
-        self.add(
-
-            Mood(
-
-                name="Sad",
-
-                energy=0.35,
-
-                valence=0.15,
-
-                tension=0.40,
-
-                darkness=0.55,
-
-                rhythmic_activity=0.32,
-
-                harmonic_density=0.62,
-
-                melodic_activity=0.55,
-
-                dynamic_range=0.55,
-
-                articulation="legato",
-
-                velocity_bias=-10,
-
-                preferred_modes=[
-
-                    "Aeolian",
-
-                    "Dorian"
-
-                ],
-
-                preferred_intervals=[
-
-                    2,
-                    3,
-                    7,
-                    10
-
-                ]
-
-            )
-
-        )
-
-        self.add(
-
-            Mood(
-
-                name="Dark",
-
-                energy=0.72,
-
-                valence=0.05,
-
-                tension=0.92,
-
-                darkness=1.00,
-
-                rhythmic_activity=0.76,
-
-                harmonic_density=0.86,
-
-                melodic_activity=0.58,
-
-                dynamic_range=0.82,
-
-                articulation="staccato",
-
-                velocity_bias=12,
-
-                preferred_modes=[
-
-                    "Phrygian",
-
-                    "Locrian",
-
-                    "Aeolian"
-
-                ],
-
-                preferred_intervals=[
-
-                    1,
-                    6,
-                    10,
-                    11
-
-                ]
-
-            )
-
-        )
-
-        self.add(
-
-            Mood(
-
-                name="Epic",
-
-                energy=0.92,
-
-                valence=0.78,
-
-                tension=0.72,
-
-                darkness=0.32,
-
-                rhythmic_activity=0.84,
-
-                harmonic_density=0.92,
-
-                melodic_activity=0.82,
-
-                dynamic_range=1.00,
-
-                articulation="accent",
-
-                velocity_bias=18,
-
-                preferred_modes=[
-
-                    "Ionian",
-
-                    "Lydian",
-
-                    "Dorian"
-
-                ],
-
-                preferred_intervals=[
-
-                    5,
-                    7,
-                    12
-
-                ]
-
-            )
-
-        )
-
-        self.add(
-
-            Mood(
-
-                name="Aggressive",
-
-                energy=1.00,
-
-                valence=0.22,
-
-                tension=1.00,
-
-                darkness=0.82,
-
-                rhythmic_activity=1.00,
-
-                harmonic_density=0.82,
-
-                melodic_activity=0.62,
-
-                dynamic_range=0.92,
-
-                articulation="staccato",
-
-                velocity_bias=20,
-
-                preferred_modes=[
-
-                    "Phrygian",
-
-                    "Locrian"
-
-                ],
-
-                preferred_intervals=[
-
-                    1,
-                    6,
-                    7
-
-                ]
-
-            )
-
-        )
-
-        self.add(
-
-            Mood(
-
-                name="Relaxed",
-
-                energy=0.22,
-
-                valence=0.72,
-
-                tension=0.10,
-
-                darkness=0.10,
-
-                rhythmic_activity=0.22,
-
-                harmonic_density=0.42,
-
-                melodic_activity=0.42,
-
-                dynamic_range=0.42,
-
-                articulation="legato",
-
-                velocity_bias=-15,
-
-                preferred_modes=[
-
-                    "Lydian",
-
-                    "Ionian"
-
-                ],
-
-                preferred_intervals=[
-
-                    3,
-                    5,
-                    7
-
-                ]
-
-            )
-
-        )
-                self.add(
-
-            Mood(
-
-                name="Melancholic",
-
-                energy=0.30,
-
-                valence=0.12,
-
-                tension=0.48,
-
-                darkness=0.60,
-
-                rhythmic_activity=0.34,
-
-                harmonic_density=0.70,
-
-                melodic_activity=0.74,
-
-                dynamic_range=0.60,
-
-                articulation="legato",
-
-                velocity_bias=-8,
-
-                preferred_modes=[
-
-                    "Aeolian",
-                    "Dorian"
-
-                ],
-
-                preferred_intervals=[
-
-                    2,
-                    3,
-                    7,
-                    10
-
-                ]
-
-            )
-
-        )
-
-        self.add(
-
-            Mood(
-
-                name="Hopeful",
-
-                energy=0.68,
-
-                valence=0.92,
-
-                tension=0.28,
-
-                darkness=0.05,
-
-                rhythmic_activity=0.64,
-
-                harmonic_density=0.58,
-
-                melodic_activity=0.84,
-
-                dynamic_range=0.72,
-
-                articulation="legato",
-
-                velocity_bias=6,
-
-                preferred_modes=[
-
-                    "Ionian",
-                    "Lydian"
-
-                ],
-
-                preferred_intervals=[
-
-                    4,
-                    5,
-                    7,
-                    12
-
-                ]
-
-            )
-
-        )
-
-        self.add(
-
-            Mood(
-
-                name="Heroic",
-
-                energy=0.95,
-
-                valence=0.82,
-
-                tension=0.74,
-
-                darkness=0.18,
-
-                rhythmic_activity=0.90,
-
-                harmonic_density=0.90,
-
-                melodic_activity=0.86,
-
-                dynamic_range=1.00,
-
-                articulation="accent",
-
-                velocity_bias=16,
-
-                preferred_modes=[
-
-                    "Ionian",
-                    "Lydian"
-
-                ],
-
-                preferred_intervals=[
-
-                    5,
-                    7,
-                    12
-
-                ]
-
-            )
-
-        )
-
-        self.add(
-
-            Mood(
-
-                name="Romantic",
-
-                energy=0.46,
-
-                valence=0.82,
-
-                tension=0.22,
-
-                darkness=0.08,
-
-                rhythmic_activity=0.42,
-
-                harmonic_density=0.82,
-
-                melodic_activity=0.86,
-
-                dynamic_range=0.72,
-
-                articulation="legato",
-
-                velocity_bias=2,
-
-                preferred_modes=[
-
-                    "Ionian",
-                    "Lydian",
-                    "Dorian"
-
-                ],
-
-                preferred_intervals=[
-
-                    3,
-                    4,
-                    7,
-                    9
-
-                ]
-
-            )
-
-        )
-
-        self.add(
-
-            Mood(
-
-                name="Dreamy",
-
-                energy=0.36,
-
-                valence=0.72,
-
-                tension=0.20,
-
-                darkness=0.18,
-
-                rhythmic_activity=0.28,
-
-                harmonic_density=0.74,
-
-                melodic_activity=0.64,
-
-                dynamic_range=0.52,
-
-                articulation="legato",
-
-                velocity_bias=-4,
-
-                preferred_modes=[
-
-                    "Lydian",
-                    "Ionian"
-
-                ],
-
-                preferred_intervals=[
-
-                    5,
-                    7,
-                    9
-
-                ]
-
-            )
-
-        )
-
-        self.add(
-
-            Mood(
-
-                name="Mysterious",
-
-                energy=0.56,
-
-                valence=0.24,
-
-                tension=0.82,
-
-                darkness=0.82,
-
-                rhythmic_activity=0.56,
-
-                harmonic_density=0.80,
-
-                melodic_activity=0.62,
-
-                dynamic_range=0.70,
-
-                articulation="tenuto",
-
-                velocity_bias=4,
-
-                preferred_modes=[
-
-                    "Locrian",
-                    "Phrygian"
-
-                ],
-
-                preferred_intervals=[
-
-                    1,
-                    6,
-                    10
-
-                ]
-
-            )
-
-        )
-
-        self.add(
-
-            Mood(
-
-                name="Horror",
-
-                energy=0.78,
-
-                valence=0.02,
-
-                tension=1.00,
-
-                darkness=1.00,
-
-                rhythmic_activity=0.58,
-
-                harmonic_density=0.92,
-
-                melodic_activity=0.42,
-
-                dynamic_range=0.90,
-
-                articulation="accent",
-
-                velocity_bias=12,
-
-                preferred_modes=[
-
-                    "Locrian",
-                    "Phrygian"
-
-                ],
-
-                preferred_intervals=[
-
-                    1,
-                    6,
-                    11
-
-                ]
-
-            )
-
-        )
-
-        self.add(
-
-            Mood(
-
-                name="Energetic",
-
-                energy=1.00,
-
-                valence=0.82,
-
-                tension=0.62,
-
-                darkness=0.10,
-
-                rhythmic_activity=1.00,
-
-                harmonic_density=0.72,
-
-                melodic_activity=0.82,
-
-                dynamic_range=0.92,
-
-                articulation="accent",
-
-                velocity_bias=18,
-
-                preferred_modes=[
-
-                    "Ionian",
-                    "Mixolydian"
-
-                ],
-
-                preferred_intervals=[
-
-                    4,
-                    5,
-                    7
-
-                ]
-
-            )
-
-        )
-
-        self.add(
-
-            Mood(
-
-                name="Peaceful",
-
-                energy=0.16,
-
-                valence=0.82,
-
-                tension=0.04,
-
-                darkness=0.02,
-
-                rhythmic_activity=0.18,
-
-                harmonic_density=0.46,
-
-                melodic_activity=0.40,
-
-                dynamic_range=0.40,
-
-                articulation="legato",
-
-                velocity_bias=-18,
-
-                preferred_modes=[
-
-                    "Lydian",
-                    "Ionian"
-
-                ],
-
-                preferred_intervals=[
-
-                    5,
-                    7,
-                    9
-
-                ]
-
-            )
-
-        )
-
-        self.add(
-
-            Mood(
-
-                name="Suspense",
-
-                energy=0.66,
-
-                valence=0.18,
-
-                tension=0.96,
-
-                darkness=0.84,
-
-                rhythmic_activity=0.60,
-
-                harmonic_density=0.82,
-
-                melodic_activity=0.54,
-
-                dynamic_range=0.82,
-
-                articulation="tenuto",
-
-                velocity_bias=8,
-
-                preferred_modes=[
-
-                    "Locrian",
-                    "Phrygian"
-
-                ],
-
-                preferred_intervals=[
-
-                    1,
-                    6,
-                    10,
-                    11
-
-                ]
-
-            )
-
-        )
-            # --------------------------------------------------
-    # CORE OPERATIONS
-    # --------------------------------------------------
-
-    def add(
+    def register(
         self,
         mood: Mood
     ):
 
-        self.moods[
-            mood.name
-        ] = mood
+        self._moods[mood.name] = mood.clone()
 
-    def get(
+    def unregister(
         self,
         name: str
-    ) -> Mood:
+    ):
 
-        if name not in self.moods:
-
-            raise KeyError(
-
-                f"Mood '{name}' not found."
-
-            )
-
-        return self.moods[
-            name
-        ].clone()
+        self._moods.pop(name, None)
 
     def exists(
         self,
         name: str
     ) -> bool:
 
-        return name in self.moods
+        return name in self._moods
 
-    def remove(
+    def get(
         self,
         name: str
-    ):
+    ) -> Mood:
 
-        if name in self.moods:
+        if name not in self._moods:
 
-            del self.moods[
-                name
-            ]
+            raise KeyError(
+                f"Mood '{name}' not found."
+            )
 
-    # --------------------------------------------------
-    # COLLECTIONS
-    # --------------------------------------------------
+        return self._moods[name].clone()
 
     def names(self):
 
-        return sorted(
-
-            self.moods.keys()
-
-        )
+        return sorted(self._moods.keys())
 
     def count(self):
 
-        return len(
+        return len(self._moods)
 
-            self.moods
+    def all(self):
 
-        )
+        return [
+
+            mood.clone()
+
+            for mood
+
+            in self._moods.values()
+
+        ]
 
     # --------------------------------------------------
     # FILTERS
     # --------------------------------------------------
 
     def by_energy(
+
         self,
-        minimum: float = 0.0,
-        maximum: float = 1.0
+
+        minimum=0.0,
+
+        maximum=1.0
+
     ):
 
         return [
 
-            mood.clone()
+            m.clone()
 
-            for mood
+            for m
 
-            in self.moods.values()
+            in self._moods.values()
 
-            if minimum <= mood.energy <= maximum
+            if minimum <= m.energy <= maximum
 
         ]
 
     def by_darkness(
+
         self,
-        minimum: float = 0.0,
-        maximum: float = 1.0
+
+        minimum=0.0,
+
+        maximum=1.0
+
     ):
 
         return [
 
-            mood.clone()
+            m.clone()
 
-            for mood
+            for m
 
-            in self.moods.values()
+            in self._moods.values()
 
-            if minimum <= mood.darkness <= maximum
+            if minimum <= m.darkness <= maximum
 
         ]
 
     def by_tension(
+
         self,
-        minimum: float = 0.0,
-        maximum: float = 1.0
+
+        minimum=0.0,
+
+        maximum=1.0
+
     ):
 
         return [
 
-            mood.clone()
+            m.clone()
 
-            for mood
+            for m
 
-            in self.moods.values()
+            in self._moods.values()
 
-            if minimum <= mood.tension <= maximum
+            if minimum <= m.tension <= maximum
 
         ]
 
     def by_valence(
+
         self,
-        minimum: float = 0.0,
-        maximum: float = 1.0
+
+        minimum=0.0,
+
+        maximum=1.0
+
     ):
 
         return [
 
-            mood.clone()
+            m.clone()
 
-            for mood
+            for m
 
-            in self.moods.values()
+            in self._moods.values()
 
-            if minimum <= mood.valence <= maximum
+            if minimum <= m.valence <= maximum
 
         ]
 
@@ -953,9 +653,11 @@ class MoodEngine:
     # RANDOM
     # --------------------------------------------------
 
-    def random_mood(self):
+    def random(
 
-        import random
+        self
+
+    ) -> Mood:
 
         return self.get(
 
@@ -967,135 +669,225 @@ class MoodEngine:
 
         )
 
+    def random_by_energy(
+
+        self,
+
+        minimum,
+
+        maximum
+
+    ):
+
+        moods = self.by_energy(
+
+            minimum,
+
+            maximum
+
+        )
+
+        if not moods:
+
+            return self.random()
+
+        return random.choice(
+
+            moods
+
+        )
+
     # --------------------------------------------------
-    # MOOD BLENDING
+    # PROFILE
     # --------------------------------------------------
 
-    def blend(
+    def set_profile(
+
         self,
-        first: Mood,
-        second: Mood,
-        ratio: float = 0.5
+
+        profile: MoodProfile
+
+    ):
+
+        self.profile = copy.deepcopy(
+
+            profile
+
+        )
+
+    def current_profile(
+
+        self
+
+    ):
+
+        return copy.deepcopy(
+
+            self.profile
+
+        )
+
+    # --------------------------------------------------
+    # TIMELINE
+    # --------------------------------------------------
+
+    def clear_timeline(
+
+        self
+
+    ):
+
+        self.timeline.clear()
+
+    def add_section(
+
+        self,
+
+        section: SectionMood
+
+    ):
+
+        self.timeline.add_section(
+
+            section
+
+        )
+
+    def mood_for_bar(
+
+        self,
+
+        bar: int
+
     ) -> Mood:
 
-        ratio = max(
-            0.0,
-            min(
-                1.0,
-                ratio
-            )
+        section = self.timeline.section_at_bar(
+
+            bar
+
         )
 
-        inv = 1.0 - ratio
+        if section is None:
 
-        return Mood(
+            return self.get(
 
-            name=f"{first.name}/{second.name}",
-
-            energy=first.energy * inv + second.energy * ratio,
-
-            valence=first.valence * inv + second.valence * ratio,
-
-            tension=first.tension * inv + second.tension * ratio,
-
-            darkness=first.darkness * inv + second.darkness * ratio,
-
-            rhythmic_activity=(
-                first.rhythmic_activity * inv +
-                second.rhythmic_activity * ratio
-            ),
-
-            harmonic_density=(
-                first.harmonic_density * inv +
-                second.harmonic_density * ratio
-            ),
-
-            melodic_activity=(
-                first.melodic_activity * inv +
-                second.melodic_activity * ratio
-            ),
-
-            dynamic_range=(
-                first.dynamic_range * inv +
-                second.dynamic_range * ratio
-            ),
-
-            articulation=second.articulation,
-
-            velocity_bias=int(
-
-                first.velocity_bias * inv +
-
-                second.velocity_bias * ratio
-
-            ),
-
-            preferred_modes=list(
-
-                dict.fromkeys(
-
-                    first.preferred_modes +
-
-                    second.preferred_modes
-
-                )
-
-            ),
-
-            preferred_intervals=list(
-
-                dict.fromkeys(
-
-                    first.preferred_intervals +
-
-                    second.preferred_intervals
-
-                )
+                self.profile.main_mood
 
             )
+
+        return self.get(
+
+            section.mood_name
 
         )
 
     # --------------------------------------------------
-    # GENERATION PARAMETERS
+    # TRACK RESOLUTION
+    # --------------------------------------------------
+
+    def resolve_track_mood(
+
+        self,
+
+        role: str
+
+    ) -> Mood:
+
+        mood = self.get(
+
+            self.profile.main_mood
+
+        )
+
+        result = mood.clone()
+
+        if role == "Drums":
+
+            result.drum_activity *= 1.15
+
+            result.rhythmic_activity *= 1.10
+
+        elif role == "Bass":
+
+            result.bass_activity *= 1.15
+
+        elif "Guitar" in role:
+
+            result.guitar_activity *= 1.20
+
+        elif role == "Pad":
+
+            result.pad_activity *= 1.25
+
+        elif role == "Strings":
+
+            result.string_activity *= 1.20
+
+        elif role == "Brass":
+
+            result.brass_activity *= 1.20
+
+        elif role == "Choir":
+
+            result.choir_activity *= 1.20
+
+        elif role == "Lead Synth":
+
+            result.lead_activity *= 1.20
+
+        return result
+
+    # --------------------------------------------------
+    # GENERATION PROFILE
     # --------------------------------------------------
 
     def generation_profile(
+
         self,
+
         mood: Mood
+
     ):
 
         return {
 
             "energy": mood.energy,
 
-            "density": mood.harmonic_density,
-
             "tension": mood.tension,
 
             "darkness": mood.darkness,
 
-            "rhythmic_activity": mood.rhythmic_activity,
+            "density": mood.harmonic_density,
 
-            "melodic_activity": mood.melodic_activity,
+            "rhythm": mood.rhythmic_activity,
 
-            "dynamic_range": mood.dynamic_range,
+            "melody": mood.melodic_activity,
 
             "velocity_bias": mood.velocity_bias,
 
-            "articulation": mood.articulation,
+            "syncopation": mood.syncopation,
 
-            "preferred_modes": list(
+            "chromaticism": mood.chromaticism,
 
-                mood.preferred_modes
+            "counterpoint": mood.counterpoint,
 
-            ),
+            "arpeggio": mood.arpeggio_usage,
 
-            "preferred_intervals": list(
+            "pause_probability": mood.pause_probability,
 
-                mood.preferred_intervals
+            "accent_probability": mood.accent_probability,
 
-            )
+            "humanize_velocity": mood.humanize_velocity,
+
+            "humanize_timing": mood.humanize_timing,
+
+            "humanize_length": mood.humanize_length,
+
+            "rhythmic_complexity": mood.rhythmic_complexity,
+
+            "melodic_complexity": mood.melodic_complexity,
+
+            "harmonic_complexity": mood.harmonic_complexity
 
         }
 
@@ -1103,22 +895,24 @@ class MoodEngine:
     # SUMMARY
     # --------------------------------------------------
 
-    def summary(self):
+    def summary(
+
+        self
+
+    ):
 
         return {
 
-            "count": self.count(),
+            "registered_moods": self.count(),
 
-            "moods": self.names()
+            "main_mood": self.profile.main_mood,
+
+            "timeline_sections": len(
+
+                self.timeline.sections
+
+            )
 
         }
-
-    # --------------------------------------------------
-    # RESET
-    # --------------------------------------------------
-
-    def reset(self):
-
-        self.moods.clear()
-
-        self._build_defaults()
+        
+        
