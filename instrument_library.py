@@ -1,21 +1,38 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from dataclasses import dataclass
+from dataclasses import field
+
+from typing import Dict
+from typing import List
+from typing import Optional
+
 import copy
+import random
+
 
 # --------------------------------------------------
-# INSTRUMENT MODEL
+# INSTRUMENT
 # --------------------------------------------------
 
 @dataclass(slots=True)
 class Instrument:
 
+    # -----------------------------
+    # Identity
+    # -----------------------------
+
     name: str
+
+    family: str
 
     category: str
 
     gm_program: int
+
+    # -----------------------------
+    # MIDI
+    # -----------------------------
 
     default_channel: Optional[int] = None
 
@@ -25,9 +42,77 @@ class Instrument:
 
     octave_shift: int = 0
 
+    min_pitch: int = 21
+
+    max_pitch: int = 108
+
+    preferred_octave_low: int = 2
+
+    preferred_octave_high: int = 6
+
+    # -----------------------------
+    # Musical Behaviour
+    # -----------------------------
+
+    preferred_density: float = 0.50
+
+    preferred_complexity: float = 0.50
+
+    preferred_velocity: int = 90
+
+    polyphonic: bool = True
+
+    max_polyphony: int = 8
+
+    # -----------------------------
+    # Character
+    # -----------------------------
+
+    energy: float = 0.50
+
+    aggression: float = 0.50
+
+    brightness: float = 0.50
+
+    warmth: float = 0.50
+
+    attack: float = 0.50
+
+    sustain: float = 0.50
+
+    # -----------------------------
+    # Usage
+    # -----------------------------
+
+    genres: List[str] = field(
+        default_factory=list
+    )
+
+    roles: List[str] = field(
+        default_factory=list
+    )
+
+    articulations: List[str] = field(
+        default_factory=list
+    )
+
+    tags: List[str] = field(
+        default_factory=list
+    )
+
+    compatible_with: List[str] = field(
+        default_factory=list
+    )
+
+    incompatible_with: List[str] = field(
+        default_factory=list
+    )
+
     metadata: Dict = field(
         default_factory=dict
     )
+
+    # --------------------------------------------------
 
     def clone(self):
 
@@ -35,578 +120,33 @@ class Instrument:
             self
         )
 
+
 # --------------------------------------------------
-# INSTRUMENT LIBRARY
+# LIBRARY
 # --------------------------------------------------
 
 class InstrumentLibrary:
 
     def __init__(self):
 
-        self.instruments: Dict[str, Instrument] = {}
+        self.instruments: Dict[
+            str,
+            Instrument
+        ] = {}
 
-        self._build_defaults()
+        self.genre_presets = {}
+
+        self.role_presets = {}
+
+        self.compatibility_map = {}
+
+        self._build_library()
 
     # --------------------------------------------------
-    # DEFAULT LIBRARY
+    # REGISTRATION
     # --------------------------------------------------
 
-    def _build_defaults(self):
-
-        # -------------------------
-        # PIANO / KEYS
-        # -------------------------
-
-        self.add(
-
-            Instrument(
-                name="Grand Piano",
-                category="Piano",
-                gm_program=0
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="Bright Piano",
-                category="Piano",
-                gm_program=1
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="Electric Piano",
-                category="Keys",
-                gm_program=4
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="Rhodes",
-                category="Keys",
-                gm_program=4
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="Clavinet",
-                category="Keys",
-                gm_program=7
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="Rock Organ",
-                category="Organ",
-                gm_program=16
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="Jazz Organ",
-                category="Organ",
-                gm_program=17
-            )
-
-        )
-
-        # -------------------------
-        # SYNTH LEADS
-        # -------------------------
-
-        self.add(
-
-            Instrument(
-                name="Lead Saw",
-                category="Synth Lead",
-                gm_program=81
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="Lead Square",
-                category="Synth Lead",
-                gm_program=80
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="Lead Mono",
-                category="Synth Lead",
-                gm_program=82
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="Pluck Synth",
-                category="Synth Lead",
-                gm_program=87
-            )
-
-        )
-
-        # -------------------------
-        # PADS
-        # -------------------------
-
-        self.add(
-
-            Instrument(
-                name="Warm Pad",
-                category="Pad",
-                gm_program=89
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="Choir Pad",
-                category="Pad",
-                gm_program=91
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="Ambient Pad",
-                category="Pad",
-                gm_program=94
-            )
-
-        )
-
-        # -------------------------
-        # STRINGS
-        # -------------------------
-
-        self.add(
-
-            Instrument(
-                name="Strings Ensemble",
-                category="Strings",
-                gm_program=48
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="Violin Section",
-                category="Strings",
-                gm_program=49
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="Cello Section",
-                category="Strings",
-                gm_program=42,
-                octave_shift=-1
-            )
-
-        )
-
-        # -------------------------
-        # CHOIR
-        # -------------------------
-
-        self.add(
-
-            Instrument(
-                name="Choir Aahs",
-                category="Choir",
-                gm_program=52
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="Choir Oohs",
-                category="Choir",
-                gm_program=53
-            )
-
-        )
-
-        # -------------------------
-        # BRASS
-        # -------------------------
-
-        self.add(
-
-            Instrument(
-                name="French Horn",
-                category="Brass",
-                gm_program=60
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="Trumpet Section",
-                category="Brass",
-                gm_program=56
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="Trombone Section",
-                category="Brass",
-                gm_program=57
-            )
-
-        )
-        # -------------------------
-        # GUITARS
-        # -------------------------
-
-        self.add(
-
-            Instrument(
-                name="Clean Electric Guitar",
-                category="Guitar",
-                gm_program=27
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="Jazz Guitar",
-                category="Guitar",
-                gm_program=26
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="Crunch Guitar",
-                category="Rock Guitar",
-                gm_program=29
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="Rhythm Guitar",
-                category="Rock Guitar",
-                gm_program=30
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="Heavy Rhythm Guitar",
-                category="Metal Guitar",
-                gm_program=30
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="High Gain Lead",
-                category="Metal Guitar",
-                gm_program=30
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="Shred Lead",
-                category="Metal Guitar",
-                gm_program=30
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="7-String Guitar",
-                category="Metal Guitar",
-                gm_program=30,
-                octave_shift=-1
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="8-String Guitar",
-                category="Metal Guitar",
-                gm_program=30,
-                octave_shift=-1
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="Baritone Guitar",
-                category="Metal Guitar",
-                gm_program=30,
-                octave_shift=-1
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="Acoustic Steel",
-                category="Acoustic Guitar",
-                gm_program=25
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="Acoustic Nylon",
-                category="Acoustic Guitar",
-                gm_program=24
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="12-String Guitar",
-                category="Acoustic Guitar",
-                gm_program=25
-            )
-
-        )
-
-        # -------------------------
-        # BASSES
-        # -------------------------
-
-        self.add(
-
-            Instrument(
-                name="Finger Bass",
-                category="Bass",
-                gm_program=33
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="Pick Bass",
-                category="Bass",
-                gm_program=34
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="Fretless Bass",
-                category="Bass",
-                gm_program=35
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="Metal Bass",
-                category="Bass",
-                gm_program=34
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="Synth Bass",
-                category="Synth Bass",
-                gm_program=38
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="Sub Bass",
-                category="Synth Bass",
-                gm_program=39,
-                octave_shift=-1
-            )
-
-        )
-
-        # -------------------------
-        # DRUM KITS
-        # -------------------------
-
-        self.add(
-
-            Instrument(
-                name="Rock Kit",
-                category="Drums",
-                gm_program=0,
-                default_channel=9
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="Metal Kit",
-                category="Drums",
-                gm_program=0,
-                default_channel=9
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="Jazz Kit",
-                category="Drums",
-                gm_program=0,
-                default_channel=9
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="Electronic Kit",
-                category="Drums",
-                gm_program=0,
-                default_channel=9
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="Hybrid Kit",
-                category="Drums",
-                gm_program=0,
-                default_channel=9
-            )
-
-        )
-
-        # -------------------------
-        # FX
-        # -------------------------
-
-        self.add(
-
-            Instrument(
-                name="Sweep FX",
-                category="FX",
-                gm_program=97
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="Noise FX",
-                category="FX",
-                gm_program=98
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="Impact FX",
-                category="FX",
-                gm_program=99
-            )
-
-        )
-
-        self.add(
-
-            Instrument(
-                name="Atmosphere FX",
-                category="FX",
-                gm_program=100
-            )
-
-        )
-
-    # --------------------------------------------------
-    # CORE OPERATIONS
-    # --------------------------------------------------
-
-    def add(
+    def register(
         self,
         instrument: Instrument
     ):
@@ -614,6 +154,13 @@ class InstrumentLibrary:
         self.instruments[
             instrument.name
         ] = instrument
+
+    def exists(
+        self,
+        name: str
+    ):
+
+        return name in self.instruments
 
     def get(
         self,
@@ -623,322 +170,12 @@ class InstrumentLibrary:
         if name not in self.instruments:
 
             raise KeyError(
-                f"Instrument '{name}' not found."
+                f"Unknown instrument: {name}"
             )
 
         return self.instruments[
             name
         ].clone()
-
-    def exists(
-        self,
-        name: str
-    ) -> bool:
-
-        return name in self.instruments
-
-    def all_names(self):
-
-        return sorted(
-
-            self.instruments.keys()
-
-        )
-
-    def categories(self):
-
-        return sorted({
-
-            inst.category
-
-            for inst
-
-            in self.instruments.values()
-
-        })
-
-    def by_category(
-        self,
-        category: str
-    ):
-
-        return sorted([
-
-            inst.name
-
-            for inst
-
-            in self.instruments.values()
-
-            if inst.category == category
-
-        ])
-        
-            # --------------------------------------------------
-    # ROLE RECOMMENDATIONS
-    # --------------------------------------------------
-
-    def recommended_for_role(
-        self,
-        role: str
-    ) -> List[Instrument]:
-
-        role_map = {
-
-            "Lead Guitar": [
-                "High Gain Lead",
-                "Shred Lead",
-                "Clean Electric Guitar"
-            ],
-
-            "Rhythm Guitar L": [
-                "Heavy Rhythm Guitar",
-                "Crunch Guitar",
-                "Rhythm Guitar"
-            ],
-
-            "Rhythm Guitar R": [
-                "Heavy Rhythm Guitar",
-                "Crunch Guitar",
-                "Rhythm Guitar"
-            ],
-
-            "Bass": [
-                "Metal Bass",
-                "Finger Bass",
-                "Pick Bass",
-                "Synth Bass"
-            ],
-
-            "Drums": [
-                "Rock Kit",
-                "Metal Kit",
-                "Electronic Kit"
-            ],
-
-            "Piano": [
-                "Grand Piano",
-                "Bright Piano"
-            ],
-
-            "Keys": [
-                "Electric Piano",
-                "Rhodes",
-                "Rock Organ"
-            ],
-
-            "Pad": [
-                "Warm Pad",
-                "Ambient Pad",
-                "Choir Pad"
-            ],
-
-            "Strings": [
-                "Strings Ensemble",
-                "Cello Section",
-                "Violin Section"
-            ],
-
-            "Choir": [
-                "Choir Aahs",
-                "Choir Oohs"
-            ],
-
-            "Brass": [
-                "French Horn",
-                "Trumpet Section",
-                "Trombone Section"
-            ],
-
-            "Lead Synth": [
-                "Lead Saw",
-                "Lead Square",
-                "Lead Mono"
-            ],
-
-            "FX": [
-                "Sweep FX",
-                "Impact FX",
-                "Atmosphere FX"
-            ]
-        }
-
-        result = []
-
-        for name in role_map.get(role, []):
-
-            if self.exists(name):
-
-                result.append(
-                    self.get(name)
-                )
-
-        return result
-
-    # --------------------------------------------------
-    # GENRE PRESETS
-    # --------------------------------------------------
-
-    def genre_preset(
-        self,
-        genre: str
-    ) -> Dict[str, str]:
-
-        presets = {
-
-            "Rock": {
-
-                "Drums": "Rock Kit",
-
-                "Bass": "Pick Bass",
-
-                "Rhythm Guitar L": "Crunch Guitar",
-
-                "Rhythm Guitar R": "Crunch Guitar",
-
-                "Lead Guitar": "Clean Electric Guitar",
-
-                "Piano": "Grand Piano"
-
-            },
-
-            "Heavy Metal": {
-
-                "Drums": "Metal Kit",
-
-                "Bass": "Metal Bass",
-
-                "Rhythm Guitar L": "Heavy Rhythm Guitar",
-
-                "Rhythm Guitar R": "Heavy Rhythm Guitar",
-
-                "Lead Guitar": "High Gain Lead"
-
-            },
-
-            "Progressive Metal": {
-
-                "Drums": "Metal Kit",
-
-                "Bass": "Metal Bass",
-
-                "Rhythm Guitar L": "7-String Guitar",
-
-                "Rhythm Guitar R": "7-String Guitar",
-
-                "Lead Guitar": "Shred Lead",
-
-                "Pad": "Ambient Pad",
-
-                "Strings": "Strings Ensemble"
-
-            },
-
-            "Ambient": {
-
-                "Pad": "Ambient Pad",
-
-                "Strings": "Strings Ensemble",
-
-                "Piano": "Grand Piano",
-
-                "Lead Synth": "Lead Saw"
-
-            },
-
-            "Techno": {
-
-                "Drums": "Electronic Kit",
-
-                "Bass": "Synth Bass",
-
-                "Lead Synth": "Lead Saw",
-
-                "Pad": "Warm Pad",
-
-                "FX": "Sweep FX"
-
-            }
-
-        }
-
-        return copy.deepcopy(
-
-            presets.get(
-
-                genre,
-
-                {}
-
-            )
-
-        )
-
-    # --------------------------------------------------
-    # RANDOM SELECTION
-    # --------------------------------------------------
-
-    def random_from_category(
-        self,
-        category: str
-    ) -> Optional[Instrument]:
-
-        items = self.by_category(
-            category
-        )
-
-        if not items:
-
-            return None
-
-        import random
-
-        return self.get(
-
-            random.choice(
-                items
-            )
-
-        )
-        
-            # --------------------------------------------------
-    # TAG FILTERING
-    # --------------------------------------------------
-
-    def by_tag(
-        self,
-        tag: str
-    ) -> List[Instrument]:
-
-        result = []
-
-        for instrument in self.instruments.values():
-
-            tags = instrument.metadata.get(
-                "tags",
-                []
-            )
-
-            if tag in tags:
-
-                result.append(
-                    instrument.clone()
-                )
-
-        return result
-
-    # --------------------------------------------------
-    # USER LIBRARY
-    # --------------------------------------------------
-
-    def register_user_instrument(
-        self,
-        instrument: Instrument
-    ):
-
-        self.add(
-            instrument
-        )
 
     def remove(
         self,
@@ -951,38 +188,823 @@ class InstrumentLibrary:
                 name
             ]
 
-    # --------------------------------------------------
-    # LIBRARY INFO
-    # --------------------------------------------------
+    def names(self):
 
-    def count(self) -> int:
+        return sorted(
+
+            self.instruments.keys()
+
+        )
+
+    def count(self):
 
         return len(
             self.instruments
         )
+        
+            # --------------------------------------------------
+    # BASIC FILTERS
+    # --------------------------------------------------
 
-    def summary(self):
+    def all(self):
 
-        result = {}
+        return [
 
-        for category in self.categories():
+            instrument.clone()
 
-            result[category] = len(
+            for instrument
 
-                self.by_category(
-                    category
+            in self.instruments.values()
+
+        ]
+
+    def families(self):
+
+        return sorted({
+
+            instrument.family
+
+            for instrument
+
+            in self.instruments.values()
+
+        })
+
+    def categories(self):
+
+        return sorted({
+
+            instrument.category
+
+            for instrument
+
+            in self.instruments.values()
+
+        })
+
+    def by_family(
+        self,
+        family: str
+    ):
+
+        return [
+
+            instrument.clone()
+
+            for instrument
+
+            in self.instruments.values()
+
+            if instrument.family == family
+
+        ]
+
+    def by_category(
+        self,
+        category: str
+    ):
+
+        return [
+
+            instrument.clone()
+
+            for instrument
+
+            in self.instruments.values()
+
+            if instrument.category == category
+
+        ]
+
+    def by_genre(
+        self,
+        genre: str
+    ):
+
+        return [
+
+            instrument.clone()
+
+            for instrument
+
+            in self.instruments.values()
+
+            if genre in instrument.genres
+
+        ]
+
+    def by_role(
+        self,
+        role: str
+    ):
+
+        return [
+
+            instrument.clone()
+
+            for instrument
+
+            in self.instruments.values()
+
+            if role in instrument.roles
+
+        ]
+
+    def by_tag(
+        self,
+        tag: str
+    ):
+
+        return [
+
+            instrument.clone()
+
+            for instrument
+
+            in self.instruments.values()
+
+            if tag in instrument.tags
+
+        ]
+
+    # --------------------------------------------------
+    # CHARACTER FILTERS
+    # --------------------------------------------------
+
+    def energetic(
+        self,
+        minimum: float = 0.70
+    ):
+
+        return [
+
+            instrument.clone()
+
+            for instrument
+
+            in self.instruments.values()
+
+            if instrument.energy >= minimum
+
+        ]
+
+    def soft(
+        self,
+        maximum: float = 0.35
+    ):
+
+        return [
+
+            instrument.clone()
+
+            for instrument
+
+            in self.instruments.values()
+
+            if instrument.aggression <= maximum
+
+        ]
+
+    def bright(
+        self,
+        minimum: float = 0.70
+    ):
+
+        return [
+
+            instrument.clone()
+
+            for instrument
+
+            in self.instruments.values()
+
+            if instrument.brightness >= minimum
+
+        ]
+
+    def warm(
+        self,
+        minimum: float = 0.70
+    ):
+
+        return [
+
+            instrument.clone()
+
+            for instrument
+
+            in self.instruments.values()
+
+            if instrument.warmth >= minimum
+
+        ]
+
+    # --------------------------------------------------
+    # PERFORMANCE FILTERS
+    # --------------------------------------------------
+
+    def polyphonic(self):
+
+        return [
+
+            instrument.clone()
+
+            for instrument
+
+            in self.instruments.values()
+
+            if instrument.polyphonic
+
+        ]
+
+    def monophonic(self):
+
+        return [
+
+            instrument.clone()
+
+            for instrument
+
+            in self.instruments.values()
+
+            if not instrument.polyphonic
+
+        ]
+
+    def playable_in_range(
+        self,
+        low: int,
+        high: int
+    ):
+
+        return [
+
+            instrument.clone()
+
+            for instrument
+
+            in self.instruments.values()
+
+            if instrument.min_pitch <= low
+            and
+            instrument.max_pitch >= high
+
+        ]
+
+    # --------------------------------------------------
+    # RANDOM
+    # --------------------------------------------------
+
+    def random_instrument(self):
+
+        if not self.instruments:
+
+            return None
+
+        return random.choice(
+
+            list(
+
+                self.instruments.values()
+
+            )
+
+        ).clone()
+
+    def random_family(
+        self,
+        family: str
+    ):
+
+        items = self.by_family(
+            family
+        )
+
+        if not items:
+
+            return None
+
+        return random.choice(
+            items
+        )
+
+    def random_category(
+        self,
+        category: str
+    ):
+
+        items = self.by_category(
+            category
+        )
+
+        if not items:
+
+            return None
+
+        return random.choice(
+            items
+        )
+
+    def random_role(
+        self,
+        role: str
+    ):
+
+        items = self.by_role(
+            role
+        )
+
+        if not items:
+
+            return None
+
+        return random.choice(
+            items
+        )
+        
+            # --------------------------------------------------
+    # SMART INSTRUMENT SELECTION
+    # --------------------------------------------------
+
+    def recommend(
+        self,
+        role: str,
+        genre: Optional[str] = None,
+        mood: Optional[str] = None,
+        energy: Optional[float] = None,
+        exclude: Optional[List[str]] = None
+    ) -> List[Instrument]:
+
+        exclude = exclude or []
+
+        candidates = []
+
+        for instrument in self.instruments.values():
+
+            if instrument.name in exclude:
+                continue
+
+            if role not in instrument.roles:
+                continue
+
+            score = 0.0
+
+            # Genre compatibility
+            if genre:
+
+                if genre in instrument.genres:
+                    score += 5.0
+
+            # Mood compatibility
+            if mood:
+
+                moods = instrument.metadata.get(
+                    "moods",
+                    []
+                )
+
+                if mood in moods:
+                    score += 4.0
+
+            # Energy similarity
+            if energy is not None:
+
+                score += max(
+                    0.0,
+                    2.0 - abs(
+                        instrument.energy - energy
+                    ) * 2.0
+                )
+
+            # Preferred instrument bonus
+            if instrument.metadata.get(
+                "preferred",
+                False
+            ):
+                score += 1.5
+
+            candidates.append(
+                (
+                    score,
+                    instrument.clone()
+                )
+            )
+
+        candidates.sort(
+            key=lambda x: x[0],
+            reverse=True
+        )
+
+        return [
+
+            item
+
+            for _score, item
+
+            in candidates
+
+        ]
+
+    # --------------------------------------------------
+    # BUILD COMPLETE BAND
+    # --------------------------------------------------
+
+    def build_band(
+        self,
+        genre: str,
+        mood: str,
+        energy: float
+    ) -> Dict[str, Instrument]:
+
+        roles = [
+
+            "Drums",
+
+            "Bass",
+
+            "Rhythm Guitar L",
+
+            "Rhythm Guitar R",
+
+            "Lead Guitar",
+
+            "Piano",
+
+            "Keys",
+
+            "Pad",
+
+            "Strings",
+
+            "Choir",
+
+            "Brass",
+
+            "Lead Synth",
+
+            "Arpeggio",
+
+            "FX",
+
+            "Melody"
+
+        ]
+
+        band = {}
+
+        used = []
+
+        for role in roles:
+
+            options = self.recommend(
+
+                role=role,
+
+                genre=genre,
+
+                mood=mood,
+
+                energy=energy,
+
+                exclude=used
+
+            )
+
+            if not options:
+                continue
+
+            chosen = options[0]
+
+            band[role] = chosen
+
+            used.append(
+                chosen.name
+            )
+
+        return band
+
+    # --------------------------------------------------
+    # COMPATIBILITY
+    # --------------------------------------------------
+
+    def compatibility_score(
+
+        self,
+
+        first: Instrument,
+
+        second: Instrument
+
+    ) -> float:
+
+        score = 0.0
+
+        shared = set(first.genres) & set(second.genres)
+
+        score += len(shared) * 2.0
+
+        score += max(
+
+            0.0,
+
+            1.0 - abs(
+
+                first.energy -
+
+                second.energy
+
+            )
+
+        )
+
+        score += max(
+
+            0.0,
+
+            1.0 - abs(
+
+                first.brightness -
+
+                second.brightness
+
+            )
+
+        )
+
+        score += max(
+
+            0.0,
+
+            1.0 - abs(
+
+                first.warmth -
+
+                second.warmth
+
+            )
+
+        )
+
+        return score
+        
+            # --------------------------------------------------
+    # COMPLETE GENRE PRESETS
+    # --------------------------------------------------
+
+    def available_genres(self) -> List[str]:
+
+        genres = set()
+
+        for instrument in self.instruments.values():
+
+            genres.update(
+                instrument.genres
+            )
+
+        return sorted(genres)
+
+    # --------------------------------------------------
+    # AUTO ASSIGN
+    # --------------------------------------------------
+
+    def assign_to_tracks(
+        self,
+        track_manager,
+        genre: str,
+        mood: str,
+        energy: float
+    ):
+
+        band = self.build_band(
+            genre=genre,
+            mood=mood,
+            energy=energy
+        )
+
+        for track in track_manager.all_tracks():
+
+            if track.role not in band:
+                continue
+
+            instrument = band[
+                track.role
+            ]
+
+            track.instrument = instrument.name
+
+            if instrument.default_channel is not None:
+
+                track.midi_channel = (
+                    instrument.default_channel
+                )
+
+            track.metadata["gm_program"] = (
+                instrument.gm_program
+            )
+
+            track.metadata["family"] = (
+                instrument.family
+            )
+
+            track.metadata["genres"] = list(
+                instrument.genres
+            )
+
+    # --------------------------------------------------
+    # EXPORT
+    # --------------------------------------------------
+
+    def export_library(self):
+
+        data = []
+
+        for instrument in self.instruments.values():
+
+            data.append({
+
+                "name": instrument.name,
+
+                "family": instrument.family,
+
+                "category": instrument.category,
+
+                "gm_program": instrument.gm_program,
+
+                "default_channel": instrument.default_channel,
+
+                "default_volume": instrument.default_volume,
+
+                "default_pan": instrument.default_pan,
+
+                "octave_shift": instrument.octave_shift,
+
+                "min_pitch": instrument.min_pitch,
+
+                "max_pitch": instrument.max_pitch,
+
+                "energy": instrument.energy,
+
+                "brightness": instrument.brightness,
+
+                "warmth": instrument.warmth,
+
+                "aggression": instrument.aggression,
+
+                "polyphonic": instrument.polyphonic,
+
+                "roles": list(
+                    instrument.roles
+                ),
+
+                "genres": list(
+                    instrument.genres
+                ),
+
+                "tags": list(
+                    instrument.tags
+                ),
+
+                "metadata": copy.deepcopy(
+                    instrument.metadata
+                )
+
+            })
+
+        return data
+
+    # --------------------------------------------------
+    # IMPORT
+    # --------------------------------------------------
+
+    def import_library(
+        self,
+        data
+    ):
+
+        self.instruments.clear()
+
+        for item in data:
+
+            self.add(
+
+                Instrument(
+
+                    name=item["name"],
+
+                    family=item["family"],
+
+                    category=item["category"],
+
+                    gm_program=item["gm_program"],
+
+                    default_channel=item.get(
+                        "default_channel"
+                    ),
+
+                    default_volume=item.get(
+                        "default_volume",
+                        100
+                    ),
+
+                    default_pan=item.get(
+                        "default_pan",
+                        64
+                    ),
+
+                    octave_shift=item.get(
+                        "octave_shift",
+                        0
+                    ),
+
+                    min_pitch=item.get(
+                        "min_pitch",
+                        0
+                    ),
+
+                    max_pitch=item.get(
+                        "max_pitch",
+                        127
+                    ),
+
+                    energy=item.get(
+                        "energy",
+                        0.5
+                    ),
+
+                    brightness=item.get(
+                        "brightness",
+                        0.5
+                    ),
+
+                    warmth=item.get(
+                        "warmth",
+                        0.5
+                    ),
+
+                    aggression=item.get(
+                        "aggression",
+                        0.5
+                    ),
+
+                    polyphonic=item.get(
+                        "polyphonic",
+                        True
+                    ),
+
+                    roles=list(
+                        item.get(
+                            "roles",
+                            []
+                        )
+                    ),
+
+                    genres=list(
+                        item.get(
+                            "genres",
+                            []
+                        )
+                    ),
+
+                    tags=list(
+                        item.get(
+                            "tags",
+                            []
+                        )
+                    ),
+
+                    metadata=copy.deepcopy(
+                        item.get(
+                            "metadata",
+                            {}
+                        )
+                    )
+
                 )
 
             )
 
-        return result
-
     # --------------------------------------------------
-    # RESET
+    # SUMMARY
     # --------------------------------------------------
 
-    def reset(self):
+    def summary(self):
 
-        self.instruments.clear()
+        return {
 
-        self._build_defaults()
+            "instrument_count": len(
+                self.instruments
+            ),
+
+            "families": len(
+                self.families()
+            ),
+
+            "categories": len(
+                self.categories()
+            ),
+
+            "genres": len(
+                self.available_genres()
+            )
+
+        }
