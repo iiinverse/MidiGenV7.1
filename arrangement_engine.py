@@ -1,169 +1,145 @@
-from typing import List, Dict, Optional
-import random
+from typing import List, Dict
+import copy
 
 
-class ArrangementEngine:
+class ArrangementEngineV2:
 
     def __init__(self, mood_engine):
         self.mood_engine = mood_engine
 
     # --------------------------------------------------
-    # MAIN ENTRY
+    # MAIN BUILD
     # --------------------------------------------------
 
-    def build_arrangement(
-        self,
-        tracks: List,
-        mood_name: str,
-        intensity: float = 1.0
-    ) -> Dict:
+    def build(self, tracks: List, mood_name: str) -> Dict:
 
         mood = self.mood_engine.get(mood_name)
         profile = self.mood_engine.generation_profile(mood)
 
-        # 1. classify tracks
-        classified = self._classify_tracks(tracks)
+        layers = self._create_layers(tracks)
 
-        # 2. assign roles based on mood
-        arrangement = self._assign_roles(classified, profile, intensity)
+        layers = self._apply_mood(layers, profile)
 
-        # 3. density shaping
-        arrangement = self._apply_density(arrangement, profile)
-
-        # 4. final optimization
-        arrangement = self._optimize_layers(arrangement)
+        layers = self._balance_layers(layers, profile)
 
         return {
             "mood": mood_name,
             "profile": profile,
-            "arrangement": arrangement
+            "layers": layers
         }
 
     # --------------------------------------------------
-    # TRACK CLASSIFICATION
+    # LAYER CREATION
     # --------------------------------------------------
 
-    def _classify_tracks(self, tracks: List) -> Dict[str, List]:
+    def _create_layers(self, tracks: List) -> Dict:
 
-        groups = {
+        layers = {
             "rhythm": [],
-            "low": [],
+            "bass": [],
             "harmony": [],
-            "lead": [],
-            "fx": []
+            "melody": [],
+            "texture": []
         }
 
         for t in tracks:
 
-            role = t.role.lower()
+            r = t.role.lower()
 
-            if "drum" in role:
-                groups["rhythm"].append(t)
+            if "drum" in r:
+                layers["rhythm"].append(self._wrap(t, "rhythm"))
 
-            elif "bass" in role:
-                groups["low"].append(t)
+            elif "bass" in r:
+                layers["bass"].append(self._wrap(t, "bass"))
 
-            elif "pad" in role or "string" in role or "piano" in role:
-                groups["harmony"].append(t)
+            elif any(x in r for x in ["pad", "string", "piano", "keys"]):
+                layers["harmony"].append(self._wrap(t, "harmony"))
 
-            elif "lead" in role or "melody" in role:
-                groups["lead"].append(t)
+            elif any(x in r for x in ["lead", "melody"]):
+                layers["melody"].append(self._wrap(t, "melody"))
 
             else:
-                groups["fx"].append(t)
+                layers["texture"].append(self._wrap(t, "texture"))
 
-        return groups
-
-    # --------------------------------------------------
-    # ROLE ASSIGNMENT
-    # --------------------------------------------------
-
-    def _assign_roles(
-        self,
-        groups: Dict,
-        profile: Dict,
-        intensity: float
-    ) -> Dict:
-
-        result = {}
-
-        # DRUMS always active if present
-        for t in groups["rhythm"]:
-            result[t.name] = {
-                "role": "rhythm",
-                "active": True,
-                "density": profile["rhythmic_activity"] * intensity
-            }
-
-        # BASS = anchor
-        for t in groups["low"]:
-            result[t.name] = {
-                "role": "bass",
-                "active": profile["energy"] > 0.2,
-                "density": profile["energy"] * intensity
-            }
-
-        # HARMONY = mood-driven
-        for t in groups["harmony"]:
-            result[t.name] = {
-                "role": "harmony",
-                "active": profile["harmonic_density"] > 0.3,
-                "density": profile["harmonic_density"] * intensity
-            }
-
-        # LEAD = emotional focus
-        for t in groups["lead"]:
-            result[t.name] = {
-                "role": "lead",
-                "active": profile["melodic_activity"] > 0.25,
-                "density": profile["melodic_activity"] * intensity
-            }
-
-        # FX = conditional
-        for t in groups["fx"]:
-            result[t.name] = {
-                "role": "fx",
-                "active": profile["darkness"] > 0.4,
-                "density": profile["tension"] * 0.5
-            }
-
-        return result
+        return layers
 
     # --------------------------------------------------
-    # DENSITY CONTROL
+    # WRAPPER
     # --------------------------------------------------
 
-    def _apply_density(self, arrangement: Dict, profile: Dict) -> Dict:
+    def _wrap(self, track, layer_type: str) -> Dict:
 
-        for name, data in arrangement.items():
+        return {
+            "name": track.name,
+            "track": track,
+            "layer": layer_type,
 
-            base = data["density"]
-
-            # global mood shaping
-            if profile["energy"] < 0.3:
-                base *= 0.6
-
-            if profile["energy"] > 0.8:
-                base *= 1.3
-
-            data["density"] = min(1.0, max(0.0, base))
-
-        return arrangement
+            # музыкальное поведение (пока заготовка)
+            "density": 0.5,
+            "activity": 0.5,
+            "velocity_bias": 0,
+            "enabled": True
+        }
 
     # --------------------------------------------------
-    # FINAL OPTIMIZATION
+    # MOOD APPLICATION
     # --------------------------------------------------
 
-    def _optimize_layers(self, arrangement: Dict) -> Dict:
+    def _apply_mood(self, layers: Dict, profile: Dict) -> Dict:
 
-        active_count = sum(
-            1 for v in arrangement.values() if v["active"]
-        )
+        for layer_name, items in layers.items():
 
-        # prevent overcrowding
-        if active_count > 10:
-            for k, v in arrangement.items():
-                if v["role"] == "fx":
-                    v["active"] = False
+            for item in items:
 
-        return arrangement
+                if layer_name == "rhythm":
+                    item["activity"] = profile["rhythmic_activity"]
+
+                elif layer_name == "bass":
+                    item["activity"] = profile["energy"]
+
+                elif layer_name == "harmony":
+                    item["activity"] = profile["harmonic_density"]
+
+                elif layer_name == "melody":
+                    item["activity"] = profile["melodic_activity"]
+
+                elif layer_name == "texture":
+                    item["activity"] = profile["darkness"]
+
+                # density scaling
+                item["density"] = (
+                    item["activity"] * profile["dynamic_range"]
+                )
+
+        return layers
+
+    # --------------------------------------------------
+    # BALANCING ENGINE
+    # --------------------------------------------------
+
+    def _balance_layers(self, layers: Dict, profile: Dict) -> Dict:
+
+        total = 0
+        for v in layers.values():
+            total += len(v)
+
+        # если перегруз
+        if total > 12:
+
+            # отключаем texture first
+            for item in layers["texture"]:
+                item["enabled"] = False
+
+        # если слишком тихо
+        if profile["energy"] < 0.3:
+
+            for item in layers["melody"]:
+                item["density"] *= 0.7
+
+        # если агрессивно
+        if profile["energy"] > 0.8:
+
+            for item in layers["rhythm"]:
+                item["density"] *= 1.3
+
+        return layers
