@@ -1,918 +1,195 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional
-import random
+from typing import Dict, Optional
 import copy
 
-
-# --------------------------------------------------
-# CONSTANTS
-# --------------------------------------------------
-
-MIN_PARAMETER = 0.0
-MAX_PARAMETER = 1.0
-
-DEFAULT_MOOD = "Neutral"
-
-DEFAULT_TRANSITION_BARS = 8
+from mood_library import Mood, MoodLibrary
 
 
 # --------------------------------------------------
-# MOOD MODEL
-# --------------------------------------------------
-
-@dataclass(slots=True)
-class Mood:
-
-    name: str
-
-    energy: float
-
-    valence: float
-
-    tension: float
-
-    darkness: float
-
-    rhythmic_activity: float
-
-    harmonic_density: float
-
-    melodic_activity: float
-
-    dynamic_range: float
-
-    articulation: str
-
-    velocity_bias: int
-
-    preferred_modes: List[str]
-
-    preferred_intervals: List[int]
-
-    syncopation: float = 0.50
-
-    chromaticism: float = 0.20
-
-    ornamentation: float = 0.30
-
-    arpeggio_usage: float = 0.40
-
-    counterpoint: float = 0.25
-
-    modulation_probability: float = 0.10
-
-    rhythmic_complexity: float = 0.50
-
-    melodic_complexity: float = 0.50
-
-    harmonic_complexity: float = 0.50
-
-    bass_activity: float = 0.50
-
-    drum_activity: float = 0.50
-
-    guitar_activity: float = 0.50
-
-    keyboard_activity: float = 0.50
-
-    pad_activity: float = 0.40
-
-    string_activity: float = 0.40
-
-    brass_activity: float = 0.30
-
-    choir_activity: float = 0.20
-
-    lead_activity: float = 0.60
-
-    humanize_timing: float = 0.05
-
-    humanize_velocity: float = 0.05
-
-    humanize_length: float = 0.02
-
-    pause_probability: float = 0.10
-
-    accent_probability: float = 0.35
-
-    octave_jump_probability: float = 0.20
-
-    metadata: Dict = field(
-        default_factory=dict
-    )
-
-    def clone(self):
-
-        return copy.deepcopy(self)
-
-
-# --------------------------------------------------
-# TRACK MOOD
-# --------------------------------------------------
-
-@dataclass(slots=True)
-class TrackMood:
-
-    role: str
-
-    mood: Mood
-
-    weight: float = 1.0
-
-    override_energy: Optional[float] = None
-
-    override_density: Optional[float] = None
-
-    override_complexity: Optional[float] = None
-
-    override_velocity: Optional[int] = None
-
-    metadata: Dict = field(
-        default_factory=dict
-    )
-
-    def clone(self):
-
-        return copy.deepcopy(self)
-
-
-# --------------------------------------------------
-# SECTION MOOD
-# --------------------------------------------------
-
-@dataclass(slots=True)
-class SectionMood:
-
-    section: str
-
-    mood_name: str
-
-    intensity: float = 1.0
-
-    bars: int = 8
-
-    transition_in: int = 2
-
-    transition_out: int = 2
-
-    metadata: Dict = field(
-        default_factory=dict
-    )
-
-
-# --------------------------------------------------
-# MOOD TRANSITION
-# --------------------------------------------------
-
-@dataclass(slots=True)
-class MoodTransition:
-
-    from_mood: str
-
-    to_mood: str
-
-    bars: int = DEFAULT_TRANSITION_BARS
-
-    curve: str = "linear"
-
-    metadata: Dict = field(
-        default_factory=dict
-    )
-
-
-# --------------------------------------------------
-# MOOD PROFILE
-# --------------------------------------------------
-
-@dataclass(slots=True)
-class MoodProfile:
-
-    main_mood: str = DEFAULT_MOOD
-
-    secondary_mood: Optional[str] = None
-
-    intensity: float = 1.0
-
-    variation: float = 0.20
-
-    evolution: float = 0.50
-
-    randomness: float = 0.10
-
-    genre_bias: float = 0.50
-
-    emotional_depth: float = 0.60
-
-    cinematic_factor: float = 0.30
-
-    aggression: float = 0.50
-
-    warmth: float = 0.50
-
-    brightness: float = 0.50
-
-    darkness: float = 0.50
-
-    metadata: Dict = field(
-        default_factory=dict
-    )
-    # --------------------------------------------------
-# MOOD BLENDER
-# --------------------------------------------------
-
-class MoodBlender:
-
-    @staticmethod
-    def blend(
-        first: Mood,
-        second: Mood,
-        ratio: float = 0.5
-    ) -> Mood:
-
-        ratio = max(0.0, min(1.0, ratio))
-        inv = 1.0 - ratio
-
-        def lerp(a, b):
-            return a * inv + b * ratio
-
-        return Mood(
-
-            name=f"{first.name}_{second.name}",
-
-            energy=lerp(first.energy, second.energy),
-
-            valence=lerp(first.valence, second.valence),
-
-            tension=lerp(first.tension, second.tension),
-
-            darkness=lerp(first.darkness, second.darkness),
-
-            rhythmic_activity=lerp(
-                first.rhythmic_activity,
-                second.rhythmic_activity
-            ),
-
-            harmonic_density=lerp(
-                first.harmonic_density,
-                second.harmonic_density
-            ),
-
-            melodic_activity=lerp(
-                first.melodic_activity,
-                second.melodic_activity
-            ),
-
-            dynamic_range=lerp(
-                first.dynamic_range,
-                second.dynamic_range
-            ),
-
-            articulation=second.articulation,
-
-            velocity_bias=int(
-                lerp(
-                    first.velocity_bias,
-                    second.velocity_bias
-                )
-            ),
-
-            preferred_modes=list(
-                dict.fromkeys(
-                    first.preferred_modes +
-                    second.preferred_modes
-                )
-            ),
-
-            preferred_intervals=list(
-                dict.fromkeys(
-                    first.preferred_intervals +
-                    second.preferred_intervals
-                )
-            ),
-
-            syncopation=lerp(
-                first.syncopation,
-                second.syncopation
-            ),
-
-            chromaticism=lerp(
-                first.chromaticism,
-                second.chromaticism
-            ),
-
-            ornamentation=lerp(
-                first.ornamentation,
-                second.ornamentation
-            ),
-
-            arpeggio_usage=lerp(
-                first.arpeggio_usage,
-                second.arpeggio_usage
-            ),
-
-            counterpoint=lerp(
-                first.counterpoint,
-                second.counterpoint
-            ),
-
-            modulation_probability=lerp(
-                first.modulation_probability,
-                second.modulation_probability
-            ),
-
-            rhythmic_complexity=lerp(
-                first.rhythmic_complexity,
-                second.rhythmic_complexity
-            ),
-
-            melodic_complexity=lerp(
-                first.melodic_complexity,
-                second.melodic_complexity
-            ),
-
-            harmonic_complexity=lerp(
-                first.harmonic_complexity,
-                second.harmonic_complexity
-            ),
-
-            bass_activity=lerp(
-                first.bass_activity,
-                second.bass_activity
-            ),
-
-            drum_activity=lerp(
-                first.drum_activity,
-                second.drum_activity
-            ),
-
-            guitar_activity=lerp(
-                first.guitar_activity,
-                second.guitar_activity
-            ),
-
-            keyboard_activity=lerp(
-                first.keyboard_activity,
-                second.keyboard_activity
-            ),
-
-            pad_activity=lerp(
-                first.pad_activity,
-                second.pad_activity
-            ),
-
-            string_activity=lerp(
-                first.string_activity,
-                second.string_activity
-            ),
-
-            brass_activity=lerp(
-                first.brass_activity,
-                second.brass_activity
-            ),
-
-            choir_activity=lerp(
-                first.choir_activity,
-                second.choir_activity
-            ),
-
-            lead_activity=lerp(
-                first.lead_activity,
-                second.lead_activity
-            ),
-
-            humanize_timing=lerp(
-                first.humanize_timing,
-                second.humanize_timing
-            ),
-
-            humanize_velocity=lerp(
-                first.humanize_velocity,
-                second.humanize_velocity
-            ),
-
-            humanize_length=lerp(
-                first.humanize_length,
-                second.humanize_length
-            ),
-
-            pause_probability=lerp(
-                first.pause_probability,
-                second.pause_probability
-            ),
-
-            accent_probability=lerp(
-                first.accent_probability,
-                second.accent_probability
-            ),
-
-            octave_jump_probability=lerp(
-                first.octave_jump_probability,
-                second.octave_jump_probability
-            )
-        )
-
-    @staticmethod
-    def blend_many(
-        moods: List[Mood]
-    ) -> Mood:
-
-        if not moods:
-            raise ValueError("No moods supplied.")
-
-        result = moods[0].clone()
-
-        for mood in moods[1:]:
-
-            result = MoodBlender.blend(
-                result,
-                mood,
-                0.5
-            )
-
-        return result
-
-
-# --------------------------------------------------
-# MOOD TIMELINE
-# --------------------------------------------------
-
-class MoodTimeline:
-
-    def __init__(self):
-
-        self.sections: List[SectionMood] = []
-
-    def add_section(
-        self,
-        section: SectionMood
-    ):
-
-        self.sections.append(section)
-
-    def clear(self):
-
-        self.sections.clear()
-
-    def total_bars(self):
-
-        return sum(
-            s.bars
-            for s in self.sections
-        )
-
-    def section_at_bar(
-        self,
-        bar: int
-    ) -> Optional[SectionMood]:
-
-        cursor = 0
-
-        for section in self.sections:
-
-            cursor += section.bars
-
-            if bar < cursor:
-
-                return section
-
-        return None
-
-    def all_sections(self):
-
-        return list(self.sections)
-        
-        # --------------------------------------------------
-# MOOD ENGINE
+# MOOD ENGINE (CORE SYSTEM)
 # --------------------------------------------------
 
 class MoodEngine:
 
     def __init__(self):
 
-        self._moods: Dict[str, Mood] = {}
+        self.library = MoodLibrary()
 
-        self.timeline = MoodTimeline()
+        self.active_mood: Optional[Mood] = None
 
-        self.profile = MoodProfile()
+        self.secondary_mood: Optional[Mood] = None
 
-        self._build_default_library()
-
-    # --------------------------------------------------
-    # LIBRARY
-    # --------------------------------------------------
-
-    def register(
-        self,
-        mood: Mood
-    ):
-
-        self._moods[mood.name] = mood.clone()
-
-    def unregister(
-        self,
-        name: str
-    ):
-
-        self._moods.pop(name, None)
-
-    def exists(
-        self,
-        name: str
-    ) -> bool:
-
-        return name in self._moods
-
-    def get(
-        self,
-        name: str
-    ) -> Mood:
-
-        if name not in self._moods:
-
-            raise KeyError(
-                f"Mood '{name}' not found."
-            )
-
-        return self._moods[name].clone()
-
-    def names(self):
-
-        return sorted(self._moods.keys())
-
-    def count(self):
-
-        return len(self._moods)
-
-    def all(self):
-
-        return [
-
-            mood.clone()
-
-            for mood
-
-            in self._moods.values()
-
-        ]
+        self.blend_ratio: float = 0.0
 
     # --------------------------------------------------
-    # FILTERS
+    # LOAD / SET MOOD
     # --------------------------------------------------
 
-    def by_energy(
+    def set_mood(self, name: str):
 
-        self,
+        self.active_mood = self.library.get(name)
+        self.secondary_mood = None
+        self.blend_ratio = 0.0
 
-        minimum=0.0,
+    def set_blend(self, mood_a: str, mood_b: str, ratio: float = 0.5):
 
-        maximum=1.0
-
-    ):
-
-        return [
-
-            m.clone()
-
-            for m
-
-            in self._moods.values()
-
-            if minimum <= m.energy <= maximum
-
-        ]
-
-    def by_darkness(
-
-        self,
-
-        minimum=0.0,
-
-        maximum=1.0
-
-    ):
-
-        return [
-
-            m.clone()
-
-            for m
-
-            in self._moods.values()
-
-            if minimum <= m.darkness <= maximum
-
-        ]
-
-    def by_tension(
-
-        self,
-
-        minimum=0.0,
-
-        maximum=1.0
-
-    ):
-
-        return [
-
-            m.clone()
-
-            for m
-
-            in self._moods.values()
-
-            if minimum <= m.tension <= maximum
-
-        ]
-
-    def by_valence(
-
-        self,
-
-        minimum=0.0,
-
-        maximum=1.0
-
-    ):
-
-        return [
-
-            m.clone()
-
-            for m
-
-            in self._moods.values()
-
-            if minimum <= m.valence <= maximum
-
-        ]
+        self.active_mood = self.library.get(mood_a)
+        self.secondary_mood = self.library.get(mood_b)
+        self.blend_ratio = max(0.0, min(1.0, ratio))
 
     # --------------------------------------------------
-    # RANDOM
+    # GET CURRENT MOOD (RESOLVED)
     # --------------------------------------------------
 
-    def random(
+    def current(self) -> Mood:
 
-        self
+        if not self.active_mood:
+            return self.library.get("Happy")
 
-    ) -> Mood:
+        if not self.secondary_mood:
+            return self.active_mood
 
-        return self.get(
-
-            random.choice(
-
-                self.names()
-
-            )
-
-        )
-
-    def random_by_energy(
-
-        self,
-
-        minimum,
-
-        maximum
-
-    ):
-
-        moods = self.by_energy(
-
-            minimum,
-
-            maximum
-
-        )
-
-        if not moods:
-
-            return self.random()
-
-        return random.choice(
-
-            moods
-
+        return self._blend(
+            self.active_mood,
+            self.secondary_mood,
+            self.blend_ratio
         )
 
     # --------------------------------------------------
-    # PROFILE
+    # INTERNAL BLEND
     # --------------------------------------------------
 
-    def set_profile(
+    def _blend(self, a: Mood, b: Mood, t: float) -> Mood:
 
-        self,
+        inv = 1.0 - t
 
-        profile: MoodProfile
+        return Mood(
 
-    ):
+            name=f"{a.name}/{b.name}",
 
-        self.profile = copy.deepcopy(
+            energy=a.energy * inv + b.energy * t,
+            valence=a.valence * inv + b.valence * t,
+            darkness=a.darkness * inv + b.darkness * t,
+            tension=a.tension * inv + b.tension * t,
 
-            profile
+            rhythmic_activity=a.rhythmic_activity * inv + b.rhythmic_activity * t,
+            melodic_activity=a.melodic_activity * inv + b.melodic_activity * t,
+            harmonic_density=a.harmonic_density * inv + b.harmonic_density * t,
+            dynamic_range=a.dynamic_range * inv + b.dynamic_range * t,
 
-        )
+            complexity=a.complexity * inv + b.complexity * t,
+            aggression=a.aggression * inv + b.aggression * t,
+            warmth=a.warmth * inv + b.warmth * t,
+            brightness=a.brightness * inv + b.brightness * t,
 
-    def current_profile(
+            velocity_bias=int(a.velocity_bias * inv + b.velocity_bias * t),
 
-        self
+            swing=a.swing * inv + b.swing * t,
+            humanization=a.humanization * inv + b.humanization * t,
 
-    ):
+            articulation=b.articulation if t > 0.5 else a.articulation,
 
-        return copy.deepcopy(
+            preferred_modes=list(dict.fromkeys(
+                a.preferred_modes + b.preferred_modes
+            )),
 
-            self.profile
+            preferred_intervals=list(dict.fromkeys(
+                a.preferred_intervals + b.preferred_intervals
+            )),
 
-        )
+            preferred_tensions=list(dict.fromkeys(
+                a.preferred_tensions + b.preferred_tensions
+            )),
 
-    # --------------------------------------------------
-    # TIMELINE
-    # --------------------------------------------------
+            genre_affinity=list(dict.fromkeys(
+                a.genre_affinity + b.genre_affinity
+            )),
 
-    def clear_timeline(
+            instrument_affinity=list(dict.fromkeys(
+                a.instrument_affinity + b.instrument_affinity
+            )),
 
-        self
-
-    ):
-
-        self.timeline.clear()
-
-    def add_section(
-
-        self,
-
-        section: SectionMood
-
-    ):
-
-        self.timeline.add_section(
-
-            section
-
-        )
-
-    def mood_for_bar(
-
-        self,
-
-        bar: int
-
-    ) -> Mood:
-
-        section = self.timeline.section_at_bar(
-
-            bar
-
-        )
-
-        if section is None:
-
-            return self.get(
-
-                self.profile.main_mood
-
-            )
-
-        return self.get(
-
-            section.mood_name
-
+            metadata={}
         )
 
     # --------------------------------------------------
-    # TRACK RESOLUTION
+    # GENERATION PROFILE (MAIN OUTPUT)
     # --------------------------------------------------
 
-    def resolve_track_mood(
+    def generation_profile(self, track_role: str = None) -> Dict:
 
-        self,
+        mood = self.current()
 
-        role: str
-
-    ) -> Mood:
-
-        mood = self.get(
-
-            self.profile.main_mood
-
-        )
-
-        result = mood.clone()
-
-        if role == "Drums":
-
-            result.drum_activity *= 1.15
-
-            result.rhythmic_activity *= 1.10
-
-        elif role == "Bass":
-
-            result.bass_activity *= 1.15
-
-        elif "Guitar" in role:
-
-            result.guitar_activity *= 1.20
-
-        elif role == "Pad":
-
-            result.pad_activity *= 1.25
-
-        elif role == "Strings":
-
-            result.string_activity *= 1.20
-
-        elif role == "Brass":
-
-            result.brass_activity *= 1.20
-
-        elif role == "Choir":
-
-            result.choir_activity *= 1.20
-
-        elif role == "Lead Synth":
-
-            result.lead_activity *= 1.20
-
-        return result
-
-    # --------------------------------------------------
-    # GENERATION PROFILE
-    # --------------------------------------------------
-
-    def generation_profile(
-
-        self,
-
-        mood: Mood
-
-    ):
-
-        return {
+        profile = {
 
             "energy": mood.energy,
-
+            "valence": mood.valence,
+            "darkness": mood.darkness,
             "tension": mood.tension,
 
-            "darkness": mood.darkness,
+            "rhythmic_activity": mood.rhythmic_activity,
+            "melodic_activity": mood.melodic_activity,
+            "harmonic_density": mood.harmonic_density,
+            "dynamic_range": mood.dynamic_range,
 
-            "density": mood.harmonic_density,
-
-            "rhythm": mood.rhythmic_activity,
-
-            "melody": mood.melodic_activity,
+            "complexity": mood.complexity,
+            "aggression": mood.aggression,
+            "warmth": mood.warmth,
+            "brightness": mood.brightness,
 
             "velocity_bias": mood.velocity_bias,
+            "swing": mood.swing,
+            "humanization": mood.humanization,
 
-            "syncopation": mood.syncopation,
+            "articulation": mood.articulation,
 
-            "chromaticism": mood.chromaticism,
+            "modes": mood.preferred_modes,
+            "intervals": mood.preferred_intervals,
+            "tensions": mood.preferred_tensions,
 
-            "counterpoint": mood.counterpoint,
-
-            "arpeggio": mood.arpeggio_usage,
-
-            "pause_probability": mood.pause_probability,
-
-            "accent_probability": mood.accent_probability,
-
-            "humanize_velocity": mood.humanize_velocity,
-
-            "humanize_timing": mood.humanize_timing,
-
-            "humanize_length": mood.humanize_length,
-
-            "rhythmic_complexity": mood.rhythmic_complexity,
-
-            "melodic_complexity": mood.melodic_complexity,
-
-            "harmonic_complexity": mood.harmonic_complexity
-
+            "genres": mood.genre_affinity,
+            "instruments": mood.instrument_affinity
         }
 
+        # --------------------------------------------------
+        # TRACK-DEPENDENT MODIFICATION (IMPORTANT FOR 15 TRACKS)
+        # --------------------------------------------------
+
+        if track_role:
+
+            if track_role == "Drums":
+                profile["rhythmic_activity"] *= 1.3
+                profile["humanization"] *= 0.8
+
+            if "Guitar" in track_role:
+                profile["aggression"] *= 1.2
+
+            if track_role == "Pad":
+                profile["dynamic_range"] *= 0.8
+                profile["harmonic_density"] *= 1.2
+
+            if track_role == "Bass":
+                profile["energy"] *= 1.1
+
+            if track_role == "Lead Guitar":
+                profile["melodic_activity"] *= 1.3
+
+        return profile
+
     # --------------------------------------------------
-    # SUMMARY
+    # QUICK HELPERS
     # --------------------------------------------------
 
-    def summary(
+    def mood_name(self) -> str:
 
-        self
+        if self.secondary_mood:
+            return f"{self.active_mood.name}/{self.secondary_mood.name}"
 
-    ):
+        return self.active_mood.name if self.active_mood else "None"
 
-        return {
+    def reset(self):
 
-            "registered_moods": self.count(),
-
-            "main_mood": self.profile.main_mood,
-
-            "timeline_sections": len(
-
-                self.timeline.sections
-
-            )
-
-        }
-        
-        
+        self.active_mood = None
+        self.secondary_mood = None
+        self.blend_ratio = 0.0
