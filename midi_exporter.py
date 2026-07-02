@@ -1,15 +1,14 @@
-# --------------------------------------------------
-# MIDI EXPORTER
-# --------------------------------------------------
-
-from typing import List
+from typing import List, Dict
 from mido import Message, MidiFile, MidiTrack, MetaMessage
 
+
+# --------------------------------------------------
+# MIDI EXPORTER (V7.1 INTEGRATED)
+# --------------------------------------------------
 
 class MIDIExporter:
 
     def __init__(self, tempo: int = 120):
-
         self.tempo = tempo
 
     # --------------------------------------------------
@@ -18,91 +17,92 @@ class MIDIExporter:
 
     def export(
         self,
-        melody: List[List[int]],
-        chords: List[List[int]],
+        events: List[Dict],
         filename: str = "output.mid"
-    ):
+    ) -> str:
+        """
+        Expects flattened arrangement:
+        [
+            {
+                "track": str,
+                "pitch": int,
+                "duration": float,
+                "velocity": int,
+                "start": float
+            }
+        ]
+        """
 
         mid = MidiFile()
 
-        melody_track = MidiTrack()
-        chord_track = MidiTrack()
+        # group by track
+        tracks_map = {}
 
-        mid.tracks.append(melody_track)
-        mid.tracks.append(chord_track)
+        for e in events:
+            t = e["track"]
+            if t not in tracks_map:
+                tracks_map[t] = MidiTrack()
+                mid.tracks.append(tracks_map[t])
 
-        # tempo
-        melody_track.append(MetaMessage('set_tempo', tempo=self.bpm_to_microseconds()))
+        # tempo track (first track)
+        tempo_track = MidiTrack()
+        mid.tracks.insert(0, tempo_track)
+
+        tempo_track.append(
+            MetaMessage(
+                "set_tempo",
+                tempo=self.bpm_to_microseconds()
+            )
+        )
 
         # --------------------------------------------------
-        # MELODY TRACK
+        # WRITE EVENTS
         # --------------------------------------------------
 
-        self.write_track(melody_track, melody, channel=0, velocity=90)
+        for track_name, track in tracks_map.items():
 
-        # --------------------------------------------------
-        # CHORD TRACK
-        # --------------------------------------------------
+            track_events = [e for e in events if e["track"] == track_name]
 
-        self.write_track(chord_track, chords, channel=1, velocity=70)
+            # sort by time
+            track_events.sort(key=lambda x: x["start"])
+
+            current_time = 0
+
+            for e in track_events:
+
+                delta = int((e["start"] - current_time) * 480)
+                current_time = e["start"]
+
+                # NOTE ON
+                track.append(
+                    Message(
+                        "note_on",
+                        note=e["pitch"],
+                        velocity=e["velocity"],
+                        time=max(delta, 0),
+                        channel=0
+                    )
+                )
+
+                # NOTE OFF (fixed duration)
+                off_time = int(e["duration"] * 480)
+
+                track.append(
+                    Message(
+                        "note_off",
+                        note=e["pitch"],
+                        velocity=0,
+                        time=off_time,
+                        channel=0
+                    )
+                )
 
         mid.save(filename)
-
         return filename
 
     # --------------------------------------------------
-    # WRITE TRACK
+    # TEMPO
     # --------------------------------------------------
 
-    def write_track(
-        self,
-        track: MidiTrack,
-        events: List[List[int]],
-        channel: int,
-        velocity: int
-    ):
-
-        time = 0
-
-        for chord_or_notes in events:
-
-            if not chord_or_notes:
-                continue
-
-            # NOTE ON
-            for note in chord_or_notes:
-
-                track.append(
-                    Message(
-                        'note_on',
-                        note=note,
-                        velocity=velocity,
-                        time=time,
-                        channel=channel
-                    )
-                )
-
-                time = 0
-
-            # NOTE OFF
-            for note in chord_or_notes:
-
-                track.append(
-                    Message(
-                        'note_off',
-                        note=note,
-                        velocity=0,
-                        time=480,
-                        channel=channel
-                    )
-                )
-
-                time = 0
-
-    # --------------------------------------------------
-    # TEMPO CONVERSION
-    # --------------------------------------------------
-
-    def bpm_to_microseconds(self):
-
+    def bpm_to_microseconds(self) -> int:
         return int(60000000 / self.tempo)
